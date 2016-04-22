@@ -1,0 +1,1 @@
+{"imgURL":"scenes/home.png","lights":[{"name":"light1","type":"unknown","state":0,"polygon":[[190,267],[530,267],[547,442],[396,477],[317,478],[188,435]],"color":"rgba(255,255,255,0.5)"},{"name":"light2","type":"unknown","state":0,"polygon":[[339,431],[342,300],[353,300],[361,433]],"color":"rgba(0,255,0,0.5)"}]}
