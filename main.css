@@ -4,5 +4,10 @@
 */
 
 body {
+  background-color: #000000;
+  color: #808080;
+}
+
+canvas {
   background-color: #FFFFFF;
 }
