@@ -10,20 +10,62 @@ var lsd = {
   init: function() {
     console.log('init');
     
+    //store canvas info
     lsd.showCanvas = document.getElementById('canvas_show');
     lsd.showCtx = lsd.showCanvas.getContext('2d');
     
     lsd.timelineCanvas = document.getElementById('canvas_timeline');
     lsd.timelineCtx = lsd.timelineCanvas.getContext('2d');
     
+    
+    //set up UI callbacks
     document.getElementById('button_start').onclick = lsd.startShow;
     document.getElementById('button_stop').onclick = lsd.stopShow;
+    document.getElementById('button_save').onclick = lsd.saveToLocalStorage;
+    document.getElementById('button_export').onclick = lsd.export;
     
     lsd.showCanvas.onclick = lsd.showCoords;
     
+    lsd.loadFromLocalStorage();
     
-    lsd.loadShow('dth');
+    //set up configuration callbacks
     
+    document.getElementById('text_backgroundURL').onchange = function() {
+      lsd.scene.imgURL = this.value;
+      lsd.loadIMG(lsd.scene.imgURL);
+    };
+      
+    
+  },
+  saveToLocalStorage: function() {
+    window.localStorage.setItem('scene', JSON.stringify(lsd.scene));
+    window.localStorage.setItem('show', JSON.stringify(lsd.show));
+  },
+  export: function() {
+    console.log('unimplemented');
+  },
+  initDesign: function() {
+    lsd.scene = {
+      imgURL: undefined,
+      lights: []
+    };
+    lsd.show = {
+      audioURL: undefined,
+      events: []
+    };
+  },
+  loadFromLocalStorage: function() {
+    lsd.scene = JSON.parse(window.localStorage.getItem('scene'));
+    lsd.show = JSON.parse(window.localStorage.getItem('show'));
+    if (lsd.scene === null || lsd.show === null) {
+      lsd.initDesign();
+    }
+    
+    document.getElementById('text_backgroundURL').value = lsd.scene.imgURL;
+    document.getElementById('text_audioURL').value = lsd.scene.audioURL;
+    
+    lsd.loadIMG(lsd.scene.imgURL);    
+    lsd.loadAudio(lsd.show.audioURL);    
   },
   showCoords: function(e) {
     var rect = lsd.showCanvas.getBoundingClientRect();
@@ -31,40 +73,34 @@ var lsd = {
     var y = Math.floor(e.clientY - rect.top);
     console.log(x + ',' + y);
   },
-  loadJSON: function(url, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('get', url, true);
-    xhr.responseType = 'json';
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        callback(xhr.response);
-      }
-    };
-    xhr.send();
-  },
-  loadIMG: function(url, callback) {
+  loadIMG: function(url) {
+    if (url === undefined) {
+      url = './questionMark_600x600.png';
+    }
     var img = new Image();
-    img.onload = callback;
+    img.onload = lsd.loadImgCB;
     img.src = url;
   },
-  loadShow: function(name) {
-    lsd.loadJSON('./shows/' + name + '.json', lsd.loadShowCB);
-  },
-  loadShowCB: function(json) {
-    lsd.show = json;
-    lsd.show.audio = new Audio(json.audioURL);
-    console.log(JSON.stringify(json));
-    lsd.loadJSON('./scenes/' + json.scene + '.json', lsd.loadSceneCB);
-  },
-  loadSceneCB: function(json) {
-    lsd.scene = json;
-    console.log(JSON.stringify(json));
-    lsd.loadIMG(json.imgURL, lsd.loadSceneImgCB);
-  },
-  loadSceneImgCB: function() {
-    lsd.scene.img = this;
+  loadAudio: function(url) {
+    if (url === undefined) {
+      url = './tone_5s.ogg';
+    }
+    var audio = new Audio(url);
+    lsd.show.audio = audio;
     lsd.drawTimeline();
-    console.log('ready');
+    //audio.onload = lsd.loadAudioCB;
+    //audio.src = url; 
+  },
+  loadAudioCB: function() {
+    console.log('audio loaded');
+    lsd.show.audio = this;
+    lsd.drawTimeline();
+  },
+  loadImgCB: function() {
+    console.log('img loaded');
+    lsd.scene.img = this;
+    lsd.drawShow();
+
   },
   startShow: function() {
     if (lsd.stop) {
@@ -118,7 +154,9 @@ var lsd = {
     var ctx = lsd.showCtx;
     
     ctx.clearRect(0,0,600,600);
-    ctx.drawImage(lsd.scene.img, 0, 0);
+    if (lsd.scene.img !== undefined) {
+      ctx.drawImage(lsd.scene.img, 0, 0);
+    }
     ctx.fillStyle = 'rgba(0,0,0,' + dimming + ')';
     ctx.fillRect(0,0,600,600);
     
@@ -139,7 +177,9 @@ var lsd = {
   drawTimeline: function(curTime) {
     var ctx = lsd.timelineCtx;
     var rowHeight = 200 / lsd.scene.lights.length;
-    
+    if (lsd.show.audio === undefined) {
+      return;
+    }
     
     ctx.clearRect(0,0,1000,200);
     
