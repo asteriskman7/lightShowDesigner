@@ -88,6 +88,7 @@ var lsd = {
     var showTime = timeStamp - lsd.startTime;
     lsd.tick(showTime);
     lsd.drawShow(showTime);
+    lsd.drawTimeline(showTime);
     
     if (!lsd.stop) {
       window.requestAnimationFrame(lsd.update);
@@ -135,7 +136,7 @@ var lsd = {
       }
     });    
   },
-  drawTimeline: function() {
+  drawTimeline: function(curTime) {
     var ctx = lsd.timelineCtx;
     var rowHeight = 200 / lsd.scene.lights.length;
     
@@ -154,7 +155,7 @@ var lsd = {
       maxTextWidth = Math.max(maxTextWidth, ctx.measureText(lsd.scene.lights[i].name).width);
       nextRowY += rowHeight;
     }
-    console.log(maxTextWidth);
+    
     nextRowY = 0;
     var events;
     var pixelsPerSecond = (1000  - (maxTextWidth + 3)) / lsd.show.audio.duration;
@@ -179,6 +180,14 @@ var lsd = {
       });
       
       nextRowY += rowHeight;
+    }
+    
+    if (curTime !== undefined) {
+      ctx.strokeStyle = '#0000FF';
+      ctx.beginPath();
+      ctx.moveTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 0);
+      ctx.lineTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 200);
+      ctx.stroke();
     }
     
   }
