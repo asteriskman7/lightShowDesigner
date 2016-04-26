@@ -140,20 +140,22 @@ var lsd = {
   },
   tick: function(showTime) {
     var e;
-    while (showTime >= lsd.show.events[lsd.eventIndex].t) {
-      e = lsd.show.events[lsd.eventIndex];
-      console.log('event ' + lsd.eventIndex);
-      for (var i = 0; i < e.states.length; i++) {
-        if (i < lsd.scene.lights.length) {
-          lsd.scene.lights[i].state = e.states[i];
+    if (lsd.eventIndex < lsd.show.events.length) {
+      while (showTime >= lsd.show.events[lsd.eventIndex].t) {
+        e = lsd.show.events[lsd.eventIndex];
+        console.log('event ' + lsd.eventIndex);
+        for (var i = 0; i < e.states.length; i++) {
+          if (i < lsd.scene.lights.length) {
+            lsd.scene.lights[i].state = e.states[i];
+          }
         }
-      }
-      
-      lsd.eventIndex++;
-      if (lsd.eventIndex >= lsd.show.events.length) {
-        console.log('events done');
-        lsd.stop = true;
-        break;
+        
+        lsd.eventIndex++;
+        if (lsd.eventIndex >= lsd.show.events.length) {
+          console.log('events done');
+          lsd.stop = true;
+          break;
+        }
       }
     }
   },
