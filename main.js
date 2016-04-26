@@ -8,6 +8,7 @@ var lsd = {
   show: undefined,
   scene: undefined,
   newLightPoints: undefined,
+  timelineMode: 'add',
   init: function() {
     console.log('init');
     
@@ -25,8 +26,10 @@ var lsd = {
     document.getElementById('button_save').onclick = lsd.saveToLocalStorage;
     document.getElementById('button_export').onclick = lsd.export;
     document.getElementById('button_addLight').onclick = lsd.addLight;
+    document.getElementById('button_delLight').onclick = lsd.deleteLight;
     
     lsd.showCanvas.onclick = lsd.showCoords;
+    lsd.timelineCanvas.onclick = lsd.timelineClick;
     
     lsd.loadFromLocalStorage();
     
@@ -252,9 +255,27 @@ var lsd = {
       lsd.newLightPoints = undefined;
       lsd.drawTimeline();
       lsd.drawShow();
+    }    
+  },
+  deleteLight: function() {
+    window.alert('click on the light strip to delete (no undo)');
+    lsd.timelineMode = 'delete';
+  },
+  timelineClick: function(e) {
+    var rect = lsd.timelineCanvas.getBoundingClientRect();
+    var x = Math.floor(e.clientX - rect.left);
+    var y = Math.floor(e.clientY - rect.top);
+    console.log(x + ',' + y);
+    var rowHeight = 200 / lsd.scene.lights.length;
+    var lightIndex = Math.floor(y / rowHeight);
+    if (lsd.timelineMode === 'delete') {
+      console.log('delete ' + lightIndex);
+      lsd.scene.lights.splice(lightIndex,1);
+      lsd.timelineMode = 'add';
+      lsd.drawTimeline();
+      lsd.drawShow();
     }
-    
-  }
+  },
 };
 
 lsd.init();
