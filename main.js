@@ -7,6 +7,7 @@ var lsd = {
   lastTime: undefined,
   show: undefined,
   scene: undefined,
+  newLightPoints: undefined,
   init: function() {
     console.log('init');
     
@@ -23,6 +24,7 @@ var lsd = {
     document.getElementById('button_stop').onclick = lsd.stopShow;
     document.getElementById('button_save').onclick = lsd.saveToLocalStorage;
     document.getElementById('button_export').onclick = lsd.export;
+    document.getElementById('button_addLight').onclick = lsd.addLight;
     
     lsd.showCanvas.onclick = lsd.showCoords;
     
@@ -33,6 +35,11 @@ var lsd = {
     document.getElementById('text_backgroundURL').onchange = function() {
       lsd.scene.imgURL = this.value;
       lsd.loadIMG(lsd.scene.imgURL);
+    };
+    
+    document.getElementById('text_audioURL').onchange = function() {
+      lsd.show.audioURL = this.value;
+      lsd.loadAudio(lsd.show.audioURL);
     };
       
     
@@ -62,7 +69,7 @@ var lsd = {
     }
     
     document.getElementById('text_backgroundURL').value = lsd.scene.imgURL;
-    document.getElementById('text_audioURL').value = lsd.scene.audioURL;
+    document.getElementById('text_audioURL').value = lsd.show.audioURL;
     
     lsd.loadIMG(lsd.scene.imgURL);    
     lsd.loadAudio(lsd.show.audioURL);    
@@ -72,6 +79,9 @@ var lsd = {
     var x = Math.floor(e.clientX - rect.left);
     var y = Math.floor(e.clientY - rect.top);
     console.log(x + ',' + y);
+    if (lsd.newLightPoints !== undefined) {
+      lsd.newLightPoints.push([x, y]);
+    }
   },
   loadIMG: function(url) {
     if (url === undefined) {
@@ -88,8 +98,6 @@ var lsd = {
     var audio = new Audio(url);
     lsd.show.audio = audio;
     lsd.drawTimeline();
-    //audio.onload = lsd.loadAudioCB;
-    //audio.src = url; 
   },
   loadAudioCB: function() {
     console.log('audio loaded');
@@ -210,8 +218,6 @@ var lsd = {
       events.forEach(function(e) {
         var xpos = (e.t / 1000) * pixelsPerSecond + maxTextWidth + 3;
         var state = e.states[i];
-        //ctx.fillStyle = styleMap[state];
-        //ctx.fillRect(xpos, nextRowY + 8, 3, rowHeight - 16);
         ctx.strokeStyle = styleMap[state];
         ctx.beginPath();
         ctx.moveTo(xpos, nextRowY + 8);
@@ -228,6 +234,22 @@ var lsd = {
       ctx.moveTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 0);
       ctx.lineTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 200);
       ctx.stroke();
+    }
+    
+  },
+  addLight: function() {
+    if (lsd.newLightPoints === undefined) {
+      window.alert('select light polygon and click button again');
+      lsd.newLightPoints = [];
+    } else {
+      console.log('make light');
+      var newName = window.prompt('New light name?', '');
+      var newColor = window.prompt('New light color?', 'rgba(0,0,0,1.0)');
+      var newLight = {name: newName, type: 'unknown', state:1, polygon: lsd.newLightPoints, color: newColor};
+      lsd.scene.lights.push(newLight);            
+      lsd.newLightPoints = undefined;
+      lsd.drawTimeline();
+      lsd.drawShow();
     }
     
   }

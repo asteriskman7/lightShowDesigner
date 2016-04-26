@@ -11,3 +11,7 @@ body {
 canvas {
   background-color: #FFFFFF;
 }
+
+#div_canvas_timeline {
+  margin-top: 4pt;
+}
