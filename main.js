@@ -27,6 +27,9 @@ var lsd = {
     document.getElementById('button_export').onclick = lsd.export;
     document.getElementById('button_addLight').onclick = lsd.addLight;
     document.getElementById('button_delLight').onclick = lsd.deleteLight;
+    document.getElementById('range_rate').oninput = lsd.changeRate;
+    
+    lsd.eRange = document.getElementById('range_rate');
     
     lsd.showCanvas.onclick = lsd.showCoords;
     lsd.timelineCanvas.onclick = lsd.timelineClick;
@@ -122,20 +125,26 @@ var lsd = {
       lsd.show.audio.currentTime = 0;
       lsd.show.audio.play();
       window.requestAnimationFrame(lsd.update);
+      lsd.eRange.disabled = true;
     }
   },
   stopShow: function() {
     lsd.show.audio.pause();
     lsd.stop = true;    
+    lsd.eRange.disabled = false;
   },
   update: function(timeStamp) {
     if (lsd.startTime === undefined) {
       lsd.startTime = timeStamp;
     }
-    var showTime = timeStamp - lsd.startTime;
+    var showTime = (timeStamp - lsd.startTime) * lsd.show.audio.playbackRate;
     lsd.tick(showTime);
     lsd.drawShow(showTime);
     lsd.drawTimeline(showTime);
+    
+    if (lsd.show.audio.currentTime >= lsd.show.audio.duration) {
+      lsd.stopShow();
+    }
     
     if (!lsd.stop) {
       window.requestAnimationFrame(lsd.update);
@@ -156,7 +165,8 @@ var lsd = {
         lsd.eventIndex++;
         if (lsd.eventIndex >= lsd.show.events.length) {
           console.log('events done');
-          lsd.stop = true;
+          //lsd.stop = true;
+          lsd.stopShow();
           break;
         }
       }
@@ -276,6 +286,11 @@ var lsd = {
       lsd.drawShow();
     }
   },
+  changeRate: function() {
+    document.getElementById('span_rate').innerHTML = this.value + '%';
+    lsd.show.audio.playbackRate = this.value / 100;
+
+  }
 };
 
 lsd.init();
