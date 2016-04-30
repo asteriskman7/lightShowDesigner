@@ -8,7 +8,8 @@ var lsd = {
   show: undefined,
   scene: undefined,
   newLightPoints: undefined,
-  timelineMode: 'add',
+  timelineMode: '',
+  recordLight: undefined,
   init: function() {
     console.log('init');
     
@@ -23,6 +24,8 @@ var lsd = {
     //set up UI callbacks
     document.getElementById('button_start').onclick = lsd.startShow;
     document.getElementById('button_stop').onclick = lsd.stopShow;
+    document.getElementById('button_record').onclick = lsd.recordShow;
+    document.getElementById('button_clear').onclick = lsd.clearShow;
     document.getElementById('button_save').onclick = lsd.saveToLocalStorage;
     document.getElementById('button_export').onclick = lsd.export;
     document.getElementById('button_addLight').onclick = lsd.addLight;
@@ -30,6 +33,10 @@ var lsd = {
     document.getElementById('range_rate').oninput = lsd.changeRate;
     
     lsd.eRange = document.getElementById('range_rate');
+    
+    //set up keyboard handler
+    document.onkeydown = lsd.keyDown;
+    document.onkeyup = lsd.keyUp;
     
     lsd.showCanvas.onclick = lsd.showCoords;
     lsd.timelineCanvas.onclick = lsd.timelineClick;
@@ -64,7 +71,6 @@ var lsd = {
     };
     lsd.show = {
       audioURL: undefined,
-      events: []
     };
   },
   loadFromLocalStorage: function() {
@@ -103,44 +109,60 @@ var lsd = {
     }
     var audio = new Audio(url);
     lsd.show.audio = audio;
-    lsd.drawTimeline();
-  },
-  loadAudioCB: function() {
-    console.log('audio loaded');
-    lsd.show.audio = this;
+    //need to use the callback because metadata, specifically duration, isn't
+    //immediately available and would cause drawing problems with drawTimeline
+    lsd.show.audio.onloadedmetadata = lsd.drawTimeline;
     lsd.drawTimeline();
   },
   loadImgCB: function() {
     console.log('img loaded');
     lsd.scene.img = this;
     lsd.drawShow();
-
   },
   startShow: function() {
     if (lsd.stop) {
       lsd.stop = false;
       lsd.startTime = undefined;
       lsd.lastTime = undefined;
-      lsd.eventIndex = 0;
+      lsd.scene.lights.forEach(function(l) {
+        l.state = 0;
+        l.curIndex = 0;
+      });
       lsd.show.audio.currentTime = 0;
       lsd.show.audio.play();
-      window.requestAnimationFrame(lsd.update);
       lsd.eRange.disabled = true;
+      
+      window.requestAnimationFrame(lsd.update);      
     }
   },
   stopShow: function() {
     lsd.show.audio.pause();
     lsd.stop = true;    
     lsd.eRange.disabled = false;
+    if (lsd.recordLight !== undefined) {
+      lsd.mergeEvents();
+      lsd.recordLight = undefined;
+      lsd.drawTimeline();
+    }
+  },
+  recordShow: function() {
+    window.alert('select the light to record for in the timeline');
+    lsd.timelineMode = 'recordSelect';
+    lsd.newEvents = [];
+  },
+  clearShow: function() {
+    window.alert('select the light to clear in the timeline');
+    lsd.timelineMode = 'clearSelect';    
   },
   update: function(timeStamp) {
     if (lsd.startTime === undefined) {
       lsd.startTime = timeStamp;
     }
     var showTime = (timeStamp - lsd.startTime) * lsd.show.audio.playbackRate;
-    lsd.tick(showTime);
-    lsd.drawShow(showTime);
-    lsd.drawTimeline(showTime);
+    lsd.showTime = showTime;
+    lsd.tick();
+    lsd.drawShow();
+    lsd.drawTimeline();
     
     if (lsd.show.audio.currentTime >= lsd.show.audio.duration) {
       lsd.stopShow();
@@ -150,10 +172,28 @@ var lsd = {
       window.requestAnimationFrame(lsd.update);
     }
   },
-  tick: function(showTime) {
+  tick: function() {
     var e;
+    lsd.scene.lights.forEach(function(l){
+      while (l.curIndex < l.events.length && l.events[l.curIndex].t <= lsd.showTime) {
+        //eval action
+        switch (l.events[l.curIndex].action) {
+          case 'on':
+            l.state = 1;
+            break;
+          case 'off':
+            l.state = 0;
+            break;
+          case 'toggle':
+            l.state = !(l.state)|0;
+            break;
+        }
+        l.curIndex += 1;
+      }
+    });
+    /*
     if (lsd.eventIndex < lsd.show.events.length) {
-      while (showTime >= lsd.show.events[lsd.eventIndex].t) {
+      while (lsd.showTime >= lsd.show.events[lsd.eventIndex].t) {
         e = lsd.show.events[lsd.eventIndex];
         console.log('event ' + lsd.eventIndex);
         for (var i = 0; i < e.states.length; i++) {
@@ -171,8 +211,9 @@ var lsd = {
         }
       }
     }
+    */
   },
-  drawShow: function(showTime) {
+  drawShow: function() {
     var dimming = 0.75;
     var ctx = lsd.showCtx;
     
@@ -197,7 +238,7 @@ var lsd = {
       }
     });    
   },
-  drawTimeline: function(curTime) {
+  drawTimeline: function() {
     var ctx = lsd.timelineCtx;
     var rowHeight = 200 / lsd.scene.lights.length;
     if (lsd.show.audio === undefined) {
@@ -220,20 +261,16 @@ var lsd = {
     }
     
     nextRowY = 0;
-    var events;
     var pixelsPerSecond = (1000  - (maxTextWidth + 3)) / lsd.show.audio.duration;
-    var styleMap = ['#FF0000', '#00FF00'];
+    var styleMap = {'on': '#00FF00', 'off': '#FF0000', 'toggle': '#0000FF'};
     for (i = 0; i < lsd.scene.lights.length; i++) {
       ctx.strokeStyle = '#000000';
-      ctx.strokeRect(maxTextWidth + 3, nextRowY, 1000, rowHeight);
+      ctx.strokeRect(maxTextWidth + 3, nextRowY, 1000, rowHeight);          
       
-      events = lsd.show.events;
-
-      
-      events.forEach(function(e) {
+      lsd.scene.lights[i].events.forEach(function(e) {
         var xpos = (e.t / 1000) * pixelsPerSecond + maxTextWidth + 3;
-        var state = e.states[i];
-        ctx.strokeStyle = styleMap[state];
+        var action = e.action;
+        ctx.strokeStyle = styleMap[action];
         ctx.beginPath();
         ctx.moveTo(xpos, nextRowY + 8);
         ctx.lineTo(xpos, nextRowY + rowHeight - 16);
@@ -243,11 +280,11 @@ var lsd = {
       nextRowY += rowHeight;
     }
     
-    if (curTime !== undefined) {
+    if (lsd.showTime !== undefined) {
       ctx.strokeStyle = '#0000FF';
       ctx.beginPath();
-      ctx.moveTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 0);
-      ctx.lineTo((curTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 200);
+      ctx.moveTo((lsd.showTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 0);
+      ctx.lineTo((lsd.showTime / 1000) * pixelsPerSecond + maxTextWidth + 3, 200);
       ctx.stroke();
     }
     
@@ -260,7 +297,7 @@ var lsd = {
       console.log('make light');
       var newName = window.prompt('New light name?', '');
       var newColor = window.prompt('New light color?', 'rgba(0,0,0,1.0)');
-      var newLight = {name: newName, type: 'unknown', state:1, polygon: lsd.newLightPoints, color: newColor};
+      var newLight = {name: newName, type: 'unknown', state:0, polygon: lsd.newLightPoints, color: newColor, events: [{t: 0, action: 'off'}], curIndex: 0};
       lsd.scene.lights.push(newLight);            
       lsd.newLightPoints = undefined;
       lsd.drawTimeline();
@@ -278,18 +315,71 @@ var lsd = {
     console.log(x + ',' + y);
     var rowHeight = 200 / lsd.scene.lights.length;
     var lightIndex = Math.floor(y / rowHeight);
-    if (lsd.timelineMode === 'delete') {
-      console.log('delete ' + lightIndex);
-      lsd.scene.lights.splice(lightIndex,1);
-      lsd.timelineMode = 'add';
-      lsd.drawTimeline();
-      lsd.drawShow();
+    switch (lsd.timelineMode) {
+      case 'delete':
+        lsd.scene.lights.splice(lightIndex,1);
+        lsd.drawTimeline();
+        lsd.drawShow();
+        break;
+      case 'recordSelect':
+        lsd.recordLight = lightIndex;
+        lsd.startShow();
+        break;
+      case 'clearSelect':
+        lsd.scene.lights[lightIndex].events = [{t: 0, action: 'off'}];
+        lsd.drawTimeline();
+        break;
     }
+    lsd.timelineMode = '';
   },
   changeRate: function() {
     document.getElementById('span_rate').innerHTML = this.value + '%';
     lsd.show.audio.playbackRate = this.value / 100;
-
+  },
+  mergeEvents: function() {
+    //merge lsd.newEvents into events for lsd.recordLight
+    var newPointer = 0;
+    var oldPointer = 0;
+    var oldEvents = lsd.scene.lights[lsd.recordLight].events;
+    var mergedEvents = [];
+    var newEvent;
+    var oldEvent;
+    //merge events in order
+    while (newPointer < lsd.newEvents.length && oldPointer < oldEvents.length) {
+      newEvent = lsd.newEvents[newPointer];
+      oldEvent = oldEvents[oldPointer];
+      if (newEvent.t < oldEvent.t) {
+        mergedEvents.push(newEvent);
+        newPointer++;
+      } else {
+        mergedEvents.push(oldEvent);
+        oldPointer++;
+      }
+    }
+    //add unmerged new events
+    while (newPointer < lsd.newEvents.length) {
+      mergedEvents.push(lsd.newEvents[newPointer]);
+      newPointer++;
+    }
+    //add unmerged old events
+    while (oldPointer < oldEvents.length) {
+      mergedEvents.push(oldEvents[oldPointer]);
+      oldPointer++;
+    }
+    lsd.scene.lights[lsd.recordLight].events = mergedEvents;
+  },
+  keyDown: function(e) {
+    var key = String.fromCharCode(e.keyCode);
+    
+    var keyMap = {0: 'off', 1: 'on', T: 'toggle'};
+    
+    if (lsd.stop === false && lsd.recordLight !== undefined) {
+      console.log('@' + lsd.showTime + ' record light ' + lsd.recordLight + ' + ' + key);
+      lsd.newEvents.push({t: lsd.showTime, action: keyMap[key]});
+    }
+  },
+  keyUp: function(e) {
+    
   }
 };
 
