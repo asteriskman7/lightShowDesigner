@@ -30,6 +30,7 @@ var lsd = {
     document.getElementById('button_export').onclick = lsd.export;
     document.getElementById('button_addLight').onclick = lsd.addLight;
     document.getElementById('button_delLight').onclick = lsd.deleteLight;
+    document.getElementById('button_editLight').onclick = lsd.editLight;
     document.getElementById('range_rate').oninput = lsd.changeRate;
     
     lsd.eRange = document.getElementById('range_rate');
@@ -308,6 +309,10 @@ var lsd = {
     window.alert('click on the light strip to delete (no undo)');
     lsd.timelineMode = 'delete';
   },
+  editLight: function() {
+    window.alert('click on the light strip to edit');
+    lsd.timelineMode = 'edit';
+  },
   timelineClick: function(e) {
     var rect = lsd.timelineCanvas.getBoundingClientRect();
     var x = Math.floor(e.clientX - rect.left);
@@ -320,6 +325,13 @@ var lsd = {
         lsd.scene.lights.splice(lightIndex,1);
         lsd.drawTimeline();
         lsd.drawShow();
+        break;
+      case 'edit':
+        var newName = window.prompt('New light name?', lsd.scene.lights[lightIndex].name);
+        var newColor = window.prompt('New light color?', lsd.scene.lights[lightIndex].color);
+        lsd.scene.lights[lightIndex].name = newName;
+        lsd.scene.lights[lightIndex].color = newColor;
+        lsd.drawTimeline();
         break;
       case 'recordSelect':
         lsd.recordLight = lightIndex;
