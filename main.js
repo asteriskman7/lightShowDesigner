@@ -375,7 +375,13 @@ var lsd = {
     
     if (lsd.stop === false && lsd.recordLight !== undefined) {
       console.log('@' + lsd.showTime + ' record light ' + lsd.recordLight + ' + ' + key);
-      lsd.newEvents.push({t: lsd.showTime, action: keyMap[key]});
+      if (key === 'P') {
+        //pulse
+        lsd.newEvents.push({t: lsd.showTime, action: 'on'});
+        lsd.newEvents.push({t: lsd.showTime + 40, action: 'off'});
+      } else {
+        lsd.newEvents.push({t: lsd.showTime, action: keyMap[key]});
+      }
     }
   },
   keyUp: function(e) {
