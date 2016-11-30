@@ -16,3 +16,5 @@ The show is shown in schematic form, there is no high quality rendering.
 
 All configuration data is saved to localstorage but ability to
 export and import will be provided.
+
+Try the current version [here](https://asteriskman7.github.io/lightShowDesigner/).
